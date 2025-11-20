@@ -1,10 +1,10 @@
 import { useState, useEffect } from 'react';
-import { RefreshCw, LogOut, Search, User, Mail } from 'lucide-react';
+import { RefreshCw, LogOut, Search, User } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
 export default function Dashboard() {
   const [keys, setKeys] = useState([]);
-  const [searchTerm, setSearchTerm] = useState('');
+  const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -13,20 +13,25 @@ export default function Dashboard() {
       navigate('/login');
       return;
     }
-    fetchKeys(token);
+    fetchData(token);
   }, [navigate]);
 
-  const fetchKeys = async (token) => {
+  const fetchData = async (token) => {
+    setLoading(true);
     try {
       const response = await fetch('http://localhost:3000/api/admin/apikeys', {
-        headers: {
-          'Authorization': `Bearer ${token}`
-        }
+        headers: { 'Authorization': `Bearer ${token}` }
       });
       const data = await response.json();
-      if (data.success) setKeys(data.data);
+      if (data.success) {
+        setKeys(data.data);
+      } else {
+        console.error("Gagal mengambil data:", data.message);
+      }
     } catch (error) {
-      console.error("Gagal ambil data", error);
+      console.error("Network Error:", error);
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -35,111 +40,87 @@ export default function Dashboard() {
     navigate('/login');
   };
 
-  // Filter pencarian (opsional, tapi berguna)
-  const filteredKeys = keys.filter(item => 
-    item.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    item.firstname.toLowerCase().includes(searchTerm.toLowerCase())
-  );
-
   return (
     <div className="min-h-screen bg-slate-50 p-6 font-sans text-slate-800">
       <div className="max-w-6xl mx-auto space-y-6">
         
-        {/* Header Dashboard */}
-        <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
-          <div>
-            <h1 className="text-2xl font-bold text-slate-900">Admin Dashboard</h1>
-            <p className="text-slate-500 text-sm">Pantau penggunaan API Key user Anda.</p>
-          </div>
-          <button 
-            onClick={handleLogout}
-            className="flex items-center gap-2 px-4 py-2 bg-red-50 text-red-600 rounded-lg hover:bg-red-100 transition-colors text-sm font-medium"
-          >
+        {/* Header */}
+        <div className="flex justify-between items-center bg-white p-5 rounded-xl shadow-sm border border-slate-200">
+          <h1 className="text-2xl font-bold text-slate-800">Admin Dashboard</h1>
+          <button onClick={handleLogout} className="px-4 py-2 bg-red-50 text-red-600 rounded-lg hover:bg-red-100 font-medium text-sm flex items-center gap-2">
             <LogOut className="w-4 h-4" /> Logout
           </button>
         </div>
 
         {/* Tabel Data */}
-        <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
-          {/* Toolbar Tabel */}
-          <div className="px-6 py-5 border-b border-slate-100 flex flex-col sm:flex-row justify-between items-center gap-4">
-            <div className="relative w-full sm:w-72">
-              <Search className="absolute left-3 top-2.5 h-4 w-4 text-slate-400" />
-              <input 
-                type="text" 
-                placeholder="Cari nama atau email..." 
-                className="w-full pl-9 pr-4 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                onChange={(e) => setSearchTerm(e.target.value)}
-              />
-            </div>
-            <button onClick={() => fetchKeys(localStorage.getItem('token'))} className="p-2 hover:bg-slate-50 rounded-full text-slate-500 hover:text-blue-600 transition-all" title="Refresh Data">
-              <RefreshCw className="w-5 h-5" />
+        <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
+          <div className="px-6 py-4 border-b border-slate-100 flex justify-between items-center bg-slate-50/50">
+            <h2 className="font-semibold text-slate-700">Laporan Pengguna API</h2>
+            <button onClick={() => fetchData(localStorage.getItem('token'))} className="p-2 hover:bg-white rounded-full text-slate-500 hover:text-blue-600 transition-all">
+              <RefreshCw className={`w-5 h-5 ${loading ? 'animate-spin' : ''}`} />
             </button>
           </div>
 
           <div className="overflow-x-auto">
             <table className="w-full text-left text-sm">
-              <thead className="bg-slate-50/50 text-slate-500 font-medium border-b border-slate-100">
+              <thead className="bg-slate-100 text-slate-600 uppercase font-bold text-xs tracking-wider">
                 <tr>
-                  <th className="px-6 py-4">User Profile</th>
+                  <th className="px-6 py-4">First Name</th>
+                  <th className="px-6 py-4">User ID</th>
                   <th className="px-6 py-4">API Key</th>
-                  <th className="px-6 py-4">Status</th>
-                  <th className="px-6 py-4">Expired Date</th>
+                  <th className="px-6 py-4">Status & Expired</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-50">
-                {filteredKeys.map((item, idx) => (
-                  <tr key={idx} className="hover:bg-slate-50/80 transition-colors">
-                    
-                    {/* Kolom 1: Identitas User */}
+              <tbody className="divide-y divide-slate-100">
+                {keys.map((item, idx) => (
+                  <tr key={idx} className="hover:bg-slate-50 transition-colors">
+                    {/* Kolom 1: First Name */}
                     <td className="px-6 py-4">
                       <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 font-bold text-sm">
-                          {item.firstname.charAt(0)}{item.lastname.charAt(0)}
+                        <div className="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center text-blue-700 font-bold text-xs">
+                          {item.firstname ? item.firstname.charAt(0).toUpperCase() : '?'}
                         </div>
-                        <div>
-                          <p className="font-semibold text-slate-900">{item.firstname} {item.lastname}</p>
-                          <div className="flex items-center gap-1 text-xs text-slate-500">
-                            <Mail className="w-3 h-3" /> {item.email}
-                          </div>
-                        </div>
+                        <span className="font-medium text-slate-900">
+                          {item.firstname} {item.lastname}
+                        </span>
                       </div>
                     </td>
 
-                    {/* Kolom 2: API Key */}
+                    {/* Kolom 2: User ID (Database ID) */}
+                    <td className="px-6 py-4 font-mono text-slate-500">
+                      #{item.user_id}
+                    </td>
+
+                    {/* Kolom 3: API Key */}
                     <td className="px-6 py-4">
-                      <code className="px-2 py-1 bg-slate-100 border border-slate-200 rounded text-xs font-mono text-slate-600">
+                      <code className="px-2 py-1 bg-slate-100 border border-slate-200 rounded text-xs font-mono text-slate-600 select-all">
                         {item.api_key}
                       </code>
                     </td>
 
-                    {/* Kolom 3: Status */}
+                    {/* Kolom 4: Expired */}
                     <td className="px-6 py-4">
-                      {new Date(item.out_of_date) < new Date() ? (
-                        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800">
-                          Expired
+                      <div className="flex flex-col items-start gap-1">
+                        {new Date(item.out_of_date) < new Date() ? (
+                          <span className="px-2 py-0.5 rounded-full bg-red-100 text-red-700 text-xs font-bold">Expired</span>
+                        ) : (
+                          <span className="px-2 py-0.5 rounded-full bg-green-100 text-green-700 text-xs font-bold">Active</span>
+                        )}
+                        <span className="text-xs text-slate-400">
+                          {new Date(item.out_of_date).toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })}
                         </span>
-                      ) : (
-                        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
-                          Active
-                        </span>
-                      )}
-                    </td>
-
-                    {/* Kolom 4: Tanggal */}
-                    <td className="px-6 py-4 text-slate-500">
-                      {new Date(item.out_of_date).toLocaleDateString('id-ID', {
-                        day: 'numeric', month: 'short', year: 'numeric'
-                      })}
+                      </div>
                     </td>
                   </tr>
                 ))}
               </tbody>
             </table>
 
-            {filteredKeys.length === 0 && (
-              <div className="p-10 text-center text-slate-400">
-                <p>Tidak ada data user ditemukan.</p>
+            {/* State Kosong */}
+            {keys.length === 0 && !loading && (
+              <div className="p-10 text-center text-slate-400 flex flex-col items-center">
+                <User className="w-10 h-10 mb-3 opacity-20" />
+                <p>Belum ada data. Silakan generate key dari halaman depan.</p>
               </div>
             )}
           </div>
